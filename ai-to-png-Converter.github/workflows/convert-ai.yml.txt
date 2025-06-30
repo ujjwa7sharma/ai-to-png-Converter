@@ -5,7 +5,7 @@ on:
     paths:
       - '**.jsx'
       - '**.ai'
-      - '.github/workflows/**'
+      - '**.github/workflows/**'
 
 jobs:
   illustrator-job:
