@@ -3,10 +3,10 @@ var exportResolution = 2400;
 app.userInteractionLevel = UserInteractionLevel.DONTDISPLAYALERTS;
 
 // Folder paths (adjusted to Desktop)
-var aiFolder = Folder("~/Desktop/PUMA_DAC/ai_files");
-var flatOutputFolder = Folder("~/Desktop/PUMA_DAC/Extracted");
-var perFileFolderRoot = Folder("~/Desktop/PUMA_DAC/png_images");
-var failedLogFile = new File("~/Desktop/PUMA_DAC/failed_exports.txt");
+var aiFolder = Folder("C:\Users\UjjwalSharma\ai-to-png-converter\ai_files");
+var flatOutputFolder = Folder("C:\Users\UjjwalSharma\ai-to-png-converter\Extracted");
+var perFileFolderRoot = Folder("C:\Users\UjjwalSharma\OneDrive - TheMathCompany Private Limited\Desktop\PUMA_DAC\png_images");
+var failedLogFile = new File("C:\Users\UjjwalSharma\OneDrive - TheMathCompany Private Limited\Desktop\PUMA_DAC\failed_exports.txt");
 
 // Initial folder checks
 if (!aiFolder.exists) {
