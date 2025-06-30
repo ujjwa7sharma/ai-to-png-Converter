@@ -1,0 +1,22 @@
+name: Convert AI Files Using Illustrator
+
+on:
+  push:
+    paths:
+      - '**.jsx'
+      - '**.ai'
+      - '.github/workflows/**'
+
+jobs:
+  illustrator-job:
+    runs-on: [self-hosted, windows]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Run Illustrator JSX Script
+        run: |
+          echo Starting Illustrator and running script...
+          start "" "C:\Program Files\Adobe\Adobe Illustrator 2023\Support Files\Contents\Windows\Illustrator.exe" "%GITHUB_WORKSPACE%\run.jsx"
+        shell: cmd
