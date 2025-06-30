@@ -17,9 +17,8 @@ jobs:
 
       - name: Run Illustrator JSX Script
         run: |
-          echo Launching Illustrator with JSX script...
-          echo Workspace path: %GITHUB_WORKSPACE%
-          dir %GITHUB_WORKSPACE%
-          "C:\Program Files\Adobe\Adobe Illustrator 2025\Support Files\Contents\Windows\Illustrator.exe" "%GITHUB_WORKSPACE%\run.jsx"
+          echo Starting Illustrator and running script...
+          start "" "C:\Program Files\Adobe\Adobe Illustrator 2025\Support Files\Contents\Windows\Illustrator.exe" "%GITHUB_WORKSPACE%\run.jsx"
         shell: cmd
+
 
