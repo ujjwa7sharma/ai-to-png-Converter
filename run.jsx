@@ -1,10 +1,4 @@
-// run.jsx
+// @target illustrator
 
-try {
-    var exportScript = File($.fileName).parent + "/export.jsx";
-    $.evalFile(exportScript);
-} catch (e) {
-    // optionally log to file
-}
-
-
+alert("✅ JSX script is running inside Illustrator!");
+$.evalFile(File($.fileName).parent + "/export.jsx");

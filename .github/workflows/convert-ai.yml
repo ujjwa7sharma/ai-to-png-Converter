@@ -15,9 +15,8 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Run Illustrator JSX Script from Trusted Folder
+      - name: Run Illustrator JSX Script
         run: |
-          echo Running Illustrator JSX script from trusted folder...
-          "C:\Program Files\Adobe\Adobe Illustrator 2025\Support Files\Contents\Windows\Illustrator.exe" "run.jsx"
-        working-directory: "C:\\Program Files\\Adobe\\Adobe Illustrator 2025\\Presets\\en_US\\Scripts"
+          echo Starting Illustrator and running script...
+          "" "C:\Program Files\Adobe\Adobe Illustrator 2025\Support Files\Contents\Windows\Illustrator.exe" "%GITHUB_WORKSPACE%\run.jsx"
         shell: cmd
