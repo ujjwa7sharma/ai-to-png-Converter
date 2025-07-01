@@ -1,4 +1,4 @@
-// Configuration
+// Configurations
 var exportResolution = 2400;
 app.userInteractionLevel = UserInteractionLevel.DONTDISPLAYALERTS;
 
