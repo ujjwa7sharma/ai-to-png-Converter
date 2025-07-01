@@ -1,22 +1,7 @@
 // @target illustrator
-
-var logFile = new File("C:/Users/UjjwalSharma/ai-to-png-converter/illustrator_export_log.txt");
-logFile.open("a");
-logFile.writeln("=== run.jsx started at " + new Date());
-
 try {
-    var exportScript = File($.fileName).parent + "/export.jsx";
-    logFile.writeln("⏳ Trying to load export.jsx from: " + exportScript.fsName);
-    
-    if (!exportScript.exists) {
-        throw new Error("export.jsx not found at path: " + exportScript.fsName);
-    }
-
+    var exportScript = File(Folder.current + "/export.jsx");
     $.evalFile(exportScript);
-    logFile.writeln("✅ export.jsx executed successfully");
 } catch (e) {
-    logFile.writeln("❌ Error in run.jsx: " + e.message);
+    alert("❌ Error: " + e.message);
 }
-
-logFile.writeln("=== run.jsx ended at " + new Date());
-logFile.close();

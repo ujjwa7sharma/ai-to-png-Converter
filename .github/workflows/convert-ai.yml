@@ -3,8 +3,8 @@ name: Convert AI Files Using Illustrator
 on:
   push:
     paths:
-      - '**.ai'
-      - '**.jsx'
+      - '**/*.ai'
+      - '**/*.jsx'
       - '.github/workflows/**'
 
 jobs:
@@ -15,8 +15,19 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      - name: Copy JSX Scripts to Trusted Folder
+        run: |
+          echo Copying scripts to Illustrator trusted folder...
+          copy "%GITHUB_WORKSPACE%\run.jsx" "C:\Program Files\Adobe\Adobe Illustrator 2025\Presets\en_US\Scripts\run.jsx"
+          copy "%GITHUB_WORKSPACE%\export.jsx" "C:\Program Files\Adobe\Adobe Illustrator 2025\Presets\en_US\Scripts\export.jsx"
+        shell: cmd
+
       - name: Run Illustrator JSX Script
         run: |
-          echo Starting Illustrator and running script...
-          start "" "C:\Program Files\Adobe\Adobe Illustrator 2025\Support Files\Contents\Windows\Illustrator.exe" "%GITHUB_WORKSPACE%\run.jsx"
+          echo Starting Illustrator and running trusted run.jsx...
+          "C:\Program Files\Adobe\Adobe Illustrator 2025\Support Files\Contents\Windows\Illustrator.exe" "C:\Program Files\Adobe\Adobe Illustrator 2025\Presets\en_US\Scripts\run.jsx"
+        shell: cmd
+
+      - name: Job Complete
+        run: echo "✅ Illustrator automation complete"
         shell: cmd
