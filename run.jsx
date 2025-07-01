@@ -1,15 +1,22 @@
 // @target illustrator
 
-alert("✅ JSX script is running inside Illustrator!");
+var logFile = new File("~/Desktop/illustrator_export_log.txt");
+logFile.open("a");
+logFile.writeln("=== run.jsx started at " + new Date());
 
 try {
     var exportScript = File($.fileName).parent + "/export.jsx";
+    logFile.writeln("⏳ Trying to load export.jsx from: " + exportScript.fsName);
+    
+    if (!exportScript.exists) {
+        throw new Error("export.jsx not found at path: " + exportScript.fsName);
+    }
+
     $.evalFile(exportScript);
-    alert("✅ export.jsx finished");
+    logFile.writeln("✅ export.jsx executed successfully");
 } catch (e) {
-    alert("❌ Error in run.jsx: " + e.message);
+    logFile.writeln("❌ Error in run.jsx: " + e.message);
 }
 
-// Optional: Pause to keep Illustrator open
-// $.sleep(5000); // OR use final alert to pause script
-alert("✅ Script complete. Close this dialog to finish.");
+logFile.writeln("=== run.jsx ended at " + new Date());
+logFile.close();
