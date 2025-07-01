@@ -1,7 +1,10 @@
-// @target illustrator
+// run.jsx
+
 try {
-    var exportScript = File(Folder.current + "/export.jsx");
+    var exportScript = File($.fileName).parent + "/export.jsx";
     $.evalFile(exportScript);
 } catch (e) {
-    alert("❌ Error: " + e.message);
+    // optionally log to file
 }
+
+
