@@ -1,6 +1,6 @@
 // @target illustrator
 
-var logFile = new File("~/Desktop/illustrator_export_log.txt");
+var logFile = new File("C:/Users/UjjwalSharma/ai-to-png-converter/illustrator_export_log.txt");
 logFile.open("a");
 logFile.writeln("=== run.jsx started at " + new Date());
 
