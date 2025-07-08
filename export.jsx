@@ -2,58 +2,121 @@
 var exportResolution = 2400;
 app.userInteractionLevel = UserInteractionLevel.DONTDISPLAYALERTS;
 
-// Folder paths (adjusted )
+// Folder paths
 var aiFolder = Folder("C:/Users/UjjwalSharma/ai-to-png-converter/ai_files");
 var flatOutputFolder = Folder("C:/Users/UjjwalSharma/ai-to-png-converter/Extracted");
 var perFileFolderRoot = Folder("C:/Users/UjjwalSharma/ai-to-png-converter/png_images");
-var failedLogFile = new File("C:/Users/UjjwalSharma/ai-to-png-converter/failed_exports.txt");
+var logsFolder = new Folder("C:/Users/UjjwalSharma/ai-to-png-converter/logs");
+var failedExportLog = new File(logsFolder.fsName + "/failed_exports.txt");
+var skippedFilesLog = new File(logsFolder.fsName + "/skipped_files.log");
 
-// Initial folder checks
-if (!aiFolder.exists) {
-    alert("'ai_files' folder not found on Desktop.");
-    exit();
-}
+// Ensure folders exist
 if (!flatOutputFolder.exists) flatOutputFolder.create();
 if (!perFileFolderRoot.exists) perFileFolderRoot.create();
+if (!logsFolder.exists) logsFolder.create();
 
-// Timestamp utility
-function getTimeStamp() {
+// Delete bad folder if it exists
+var processCSVPath = logsFolder.fsName + "/process_log.csv";
+var possibleFolder = new Folder(processCSVPath);
+if (possibleFolder.exists) {
+    possibleFolder.remove(); // Delete folder if mistakenly created
+}
+
+// ✅ Create proper CSV file with header
+var csvHeader = new File(processCSVPath);
+csvHeader.open("w");
+csvHeader.writeln("timestamp_utc,file_name,layer_name,group_name,status,message,log_type");
+csvHeader.close();
+
+// UTC timestamp utility
+function getUTCTimestamp() {
     var now = new Date();
-    return now.toLocaleString();
+    function pad(n) { return n < 10 ? '0' + n : n; }
+    return now.getUTCFullYear() + '-' +
+           pad(now.getUTCMonth() + 1) + '-' +
+           pad(now.getUTCDate()) + 'T' +
+           pad(now.getUTCHours()) + ':' +
+           pad(now.getUTCMinutes()) + ':' +
+           pad(now.getUTCSeconds()) + 'Z';
 }
 
-// Start fresh log
-failedLogFile.open("w");
-failedLogFile.writeln("Failed or Skipped Exports (Empty Folders)");
-failedLogFile.close();
-
-var aiFiles = aiFolder.getFiles("*.ai");
-if (aiFiles.length === 0) {
-    alert("No .ai files found in 'ai_files'");
-    exit();
+// ✅ Reliable CSV logging
+function logToCSV(fileName, layerName, groupName, status, message, logType) {
+    var logFile = new File(processCSVPath);
+    if (logFile.open("a")) {
+        logFile.writeln([
+            getUTCTimestamp(),
+            '"' + fileName + '"',
+            '"' + layerName + '"',
+            '"' + groupName + '"',
+            status,
+            '"' + message.replace(/"/g, '""') + '"',
+            logType
+        ].join(","));
+        logFile.close();
+    } else {
+        $.writeln("🛑 Failed to write to CSV log.");
+    }
 }
 
-// Helper functions
+// Utility
 function safeTrim(value) {
     return (typeof value === "string") ? value.replace(/^\s+|\s+$/g, "") : "";
 }
 
-function layerAlreadyAdded(layer, list) {
-    for (var i = 0; i < list.length; i++) {
-        if (list[i] === layer) return true;
+// ✅ Collect all GroupItems recursively from any container
+function collectGroupItems(container) {
+    var groups = [];
+    for (var i = 0; i < container.pageItems.length; i++) {
+        if (container.pageItems[i].typename === "GroupItem") {
+            groups.push(container.pageItems[i]);
+        }
     }
-    return false;
+    for (var j = 0; j < container.layers.length; j++) {
+        groups = groups.concat(collectGroupItems(container.layers[j]));
+    }
+    return groups;
 }
 
-// Main processing loop
+// ✅ Select valid layers: 6-digit OR "techpack" OR "sketch"
+function findRelevantLayers(doc) {
+    var validLayers = [];
+    for (var i = 0; i < doc.layers.length; i++) {
+        var lname = safeTrim(doc.layers[i].name).toLowerCase();
+        if (/^\d{6}$/.test(lname) || lname === "techpack" || lname === "sketch") {
+            validLayers.push(doc.layers[i]);
+        }
+    }
+    return validLayers;
+}
+
+// Reset logs
+failedExportLog.open("w");
+failedExportLog.writeln("📄 Failed or Skipped Exports (Empty Folders)");
+failedExportLog.close();
+
+skippedFilesLog.open("w");
+skippedFilesLog.writeln("❌ Files Illustrator could not open:");
+skippedFilesLog.close();
+
+// Start processing
+var aiFiles = aiFolder.getFiles("*.ai");
+if (aiFiles.length === 0) {
+    alert("No .ai files found.");
+    exit();
+}
+
 for (var f = 0; f < aiFiles.length; f++) {
     var aiFile = aiFiles[f];
-    var doc;
+    var doc = null;
 
     try {
         doc = app.open(aiFile);
     } catch (e) {
-        $.writeln("Failed to open: " + aiFile.name);
+        skippedFilesLog.open('a');
+        skippedFilesLog.writeln(aiFile.fsName + " -- " + e.message);
+        skippedFilesLog.close();
+        logToCSV(aiFile.name, "", "", "SKIPPED", "Illustrator could not open the file.", "FILE");
         continue;
     }
 
@@ -61,108 +124,99 @@ for (var f = 0; f < aiFiles.length; f++) {
     var perFileFolder = new Folder(perFileFolderRoot.fsName + "/" + fileNameNoExt);
     if (!perFileFolder.exists) perFileFolder.create();
 
-    var selectedLayers = [];
+    var selectedLayers = findRelevantLayers(doc);
 
-    // Step 1: Exact 6-digit layer names
-    for (var l = 0; l < doc.layers.length; l++) {
-        var lname = safeTrim(doc.layers[l].name);
-        if (/^\d{6}$/.test(lname)) {
-            selectedLayers.push(doc.layers[l]);
-        }
-    }
-
-    // Step 2: Layers containing 6-digit IDs
-    for (var l = 0; l < doc.layers.length; l++) {
-        var lname = safeTrim(doc.layers[l].name);
-        if (!layerAlreadyAdded(doc.layers[l], selectedLayers) && /\d{6}/.test(lname)) {
-            selectedLayers.push(doc.layers[l]);
-        }
-    }
-
-    // Step 3: Fallback to 'techpack' layer
     if (selectedLayers.length === 0) {
-        try {
-            var techpackLayer = doc.layers.getByName("techpack");
-            selectedLayers.push(techpackLayer);
-        } catch (e) {
-            $.writeln("Skipped (no valid layers): " + aiFile.name);
-            doc.close(SaveOptions.DONOTSAVECHANGES);
-            continue;
-        }
+        logToCSV(aiFile.name, "", "", "SKIPPED", "No valid layers found.", "FILE");
+        doc.close(SaveOptions.DONOTSAVECHANGES);
+        continue;
     }
 
     try {
         var exportedCount = 0;
+        var totalGroups = 0;
 
         for (var l = 0; l < selectedLayers.length; l++) {
             var layer = selectedLayers[l];
             var layerName = safeTrim(layer.name);
-            var sixDigitMatch = layerName.match(/\d{6}/);
-            if (!sixDigitMatch) continue;
-            var layerID = sixDigitMatch[0];
+            var articleLayerID = layerName.replace(/\s+/g, "");
 
-            for (var i = 0; i < layer.pageItems.length; i++) {
-                var item = layer.pageItems[i];
-                if (item.typename !== "GroupItem") continue;
+            var groupItems = collectGroupItems(layer);
+            totalGroups += groupItems.length;
 
+            for (var i = 0; i < groupItems.length; i++) {
+                var item = groupItems[i];
                 var groupName = safeTrim(item.name);
-                if (!groupName) continue;
-
-                var finalName = (groupName.indexOf(layerID) === 0)
-                    ? groupName
-                    : layerID + "_" + groupName;
-
-                var bounds = item.visibleBounds;
-                var groupWidth = bounds[2] - bounds[0];
-                var groupHeight = bounds[1] - bounds[3];
-
-                if (groupWidth < 50 || groupHeight < 50) {
-                    $.writeln("Skipped small group: " + finalName + " (" + groupWidth + "x" + groupHeight + ")");
+                if (!groupName) {
+                    logToCSV(aiFile.name, layerName, "", "SKIPPED", "Unnamed group.", "GROUP");
                     continue;
                 }
 
-                var newDoc = app.documents.add(DocumentColorSpace.RGB, groupWidth, groupHeight);
-                var duplicatedGroup = item.duplicate(newDoc.layers[0], ElementPlacement.PLACEATBEGINNING);
-                duplicatedGroup.left = 0;
-                duplicatedGroup.top = groupHeight;
+                var finalName = (groupName.indexOf(articleLayerID) === 0)
+                    ? groupName
+                    : articleLayerID + "_" + groupName;
 
-                var exportOptions = new ExportOptionsPNG24();
-                exportOptions.artBoardClipping = true;
-                exportOptions.antiAliasing = true;
-                exportOptions.transparency = true;
-                exportOptions.horizontalScale = 1000;
-                exportOptions.verticalScale = 1000;
-                exportOptions.resolution = exportResolution;
+                var bounds = item.visibleBounds;
+                var width = bounds[2] - bounds[0];
+                var height = bounds[1] - bounds[3];
 
-                var fileName = finalName + ".png";
-                var file1 = new File(perFileFolder.fsName + "/" + fileName);
-                var file2 = new File(flatOutputFolder.fsName + "/" + fileName);
+                if (width < 50 || height < 50) {
+                    logToCSV(aiFile.name, layerName, groupName, "SKIPPED", "Group too small (< 50px).", "GROUP");
+                    continue;
+                }
 
-                newDoc.exportFile(file1, ExportType.PNG24, exportOptions);
+                var newDoc = app.documents.add(DocumentColorSpace.RGB, width, height);
+                var dup = item.duplicate(newDoc.layers[0], ElementPlacement.PLACEATBEGINNING);
+                dup.left = 0;
+                dup.top = height;
+
+                var options = new ExportOptionsPNG24();
+                options.artBoardClipping = true;
+                options.antiAliasing = true;
+                options.transparency = true;
+                options.horizontalScale = 1000;
+                options.verticalScale = 1000;
+                options.resolution = exportResolution;
+
+                var pngName = finalName + ".png";
+                var file1 = new File(perFileFolder.fsName + "/" + pngName);
+                var file2 = new File(flatOutputFolder.fsName + "/" + pngName);
+
+                newDoc.exportFile(file1, ExportType.PNG24, options);
                 file1.copy(file2);
-
                 newDoc.close(SaveOptions.DONOTSAVECHANGES);
+
+                logToCSV(aiFile.name, layerName, groupName, "EXPORTED", "Export successful.", "GROUP");
                 exportedCount++;
-                $.writeln("Exported: " + finalName);
             }
         }
 
         doc.close(SaveOptions.DONOTSAVECHANGES);
-        $.writeln("Finished file: " + aiFile.name);
+
+        var status = "EXPORTED";
+        var msg = "All groups exported.";
+        if (exportedCount === 0) {
+            status = "SKIPPED";
+            msg = "No valid groups exported.";
+        } else if (exportedCount < totalGroups) {
+            status = "PARTIAL";
+            msg = "Some groups were skipped.";
+        }
+
+        logToCSV(aiFile.name, "", "", status, msg, "FILE");
 
     } catch (e) {
-        $.writeln("Error processing " + aiFile.name + ": " + e.message);
+        logToCSV(aiFile.name, "", "", "ERROR", e.message, "FILE");
         if (doc) doc.close(SaveOptions.DONOTSAVECHANGES);
     }
 }
 
-// Check for empty export folders
+// Post-check: empty folders?
 var subfolders = perFileFolderRoot.getFiles(function (f) {
     return f instanceof Folder;
 });
 
 var failedList = [];
-
 for (var i = 0; i < subfolders.length; i++) {
     var pngs = subfolders[i].getFiles("*.png");
     if (pngs.length === 0) {
@@ -171,15 +225,18 @@ for (var i = 0; i < subfolders.length; i++) {
 }
 
 if (failedList.length > 0) {
-    failedLogFile.open("a");
-    failedLogFile.writeln("\nFailed on: " + getTimeStamp());
+    failedExportLog.open("a");
+    failedExportLog.writeln("\n🕓 Checked at: " + getUTCTimestamp());
     for (var j = 0; j < failedList.length; j++) {
-        failedLogFile.writeln(failedList[j]);
+        failedExportLog.writeln(failedList[j]);
+        logToCSV(failedList[j], "", "", "FAILED_FOLDER", "Empty PNG export folder.", "FILE");
     }
-    failedLogFile.close();
-    alert("Export finished with some skipped folders. Check 'failed_exports.txt'");
+    failedExportLog.close();
+    alert("⚠️ Export complete with skipped folders. See 'failed_exports.txt'");
 } else {
-    alert("All PNGs exported successfully.");
+    alert("🎉 All PNGs exported successfully.");
 }
 
 app.quit();
+
+
