@@ -19,7 +19,7 @@ if (!logsFolder.exists) logsFolder.create();
 var processCSVPath = logsFolder.fsName + "/process_log.csv";
 var possibleFolder = new Folder(processCSVPath);
 if (possibleFolder.exists) {
-    possibleFolder.remove(); // Delete folder if mistakenly created
+    possibleFolder.remove();
 }
 
 // Create proper CSV file with header
@@ -59,31 +59,33 @@ function logToCSV(fileName, layerName, groupName, status, message, logType) {
     }
 }
 
-// Utility
 function safeTrim(value) {
     return (typeof value === "string") ? value.replace(/^\s+|\s+$/g, "") : "";
 }
 
-// Collect all GroupItems recursively from any container
-function collectGroupItems(container) {
+// ✅ Modified: Collect direct GroupItems from a layer
+function collectGroupItems(layer) {
     var groups = [];
-    for (var i = 0; i < container.pageItems.length; i++) {
-        if (container.pageItems[i].typename === "GroupItem") {
-            groups.push(container.pageItems[i]);
+    for (var i = 0; i < layer.pageItems.length; i++) {
+        var item = layer.pageItems[i];
+        if (item.typename === "GroupItem") {
+            groups.push(item);
         }
-    }
-    for (var j = 0; j < container.layers.length; j++) {
-        groups = groups.concat(collectGroupItems(container.layers[j]));
     }
     return groups;
 }
 
-//  Select valid layers: 6-digit OR "techpack" OR "sketch"
+// ✅ Updated to include 6-digit base + *_BV layers
 function findRelevantLayers(doc) {
     var validLayers = [];
     for (var i = 0; i < doc.layers.length; i++) {
         var lname = safeTrim(doc.layers[i].name).toLowerCase();
-        if (/^\d{6}$/.test(lname) || lname === "techpack" || lname === "sketch") {
+        if (
+            /^\d{6}$/.test(lname) ||                       // 629623
+            /^(\d{6})_\d{2}_bv$/.test(lname) ||            // 629623_29_BV
+            /^(\d{6})_\d{2}_bv$/.test(lname) ||            // 629623_87_BV
+            lname === "techpack" || lname === "sketch"
+        ) {
             validLayers.push(doc.layers[i]);
         }
     }
@@ -139,7 +141,8 @@ for (var f = 0; f < aiFiles.length; f++) {
         for (var l = 0; l < selectedLayers.length; l++) {
             var layer = selectedLayers[l];
             var layerName = safeTrim(layer.name);
-            var articleLayerID = layerName.replace(/\s+/g, "");
+            var articleLayerID = layerName.match(/^\d{6}/);
+            articleLayerID = articleLayerID ? articleLayerID[0] : layerName;
 
             var groupItems = collectGroupItems(layer);
             totalGroups += groupItems.length;
@@ -238,6 +241,3 @@ if (failedList.length > 0) {
 }
 
 app.quit();
-
-
-
