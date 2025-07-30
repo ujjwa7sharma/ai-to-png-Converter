@@ -5,6 +5,7 @@ on:
     paths:
       - '**.ai'
       - '**.jsx'
+      - '**.py'
       - '.github/workflows/**'
 
 jobs:
@@ -15,8 +16,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Run Illustrator JSX Script
-        run: |
-          echo Starting Illustrator and running script...
-          "C:\Program Files\Adobe\Adobe Illustrator 2025\Support Files\Contents\Windows\Illustrator.exe" "%GITHUB_WORKSPACE%\run.jsx"
+      - name: Run Python Wrapper Script
+        run: python main.py
         shell: cmd
